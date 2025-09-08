@@ -1,5 +1,5 @@
 # python
-This repository is intended to store my notes, exercises, and projects from my Python journey.
+This repository is intended to store my progress from intermediate to advanced level.
 
 1 FIRST PROJECT: Simple ETL (Extract, Transform, Load) (YOU CAN FIND IT ON "ETL" FOLDER)
 
