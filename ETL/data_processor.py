@@ -70,19 +70,25 @@ def csv_to_sql():
 
     #creating the SQL Server conection  
     try:
-        conn = pyodbc.connect(
-        'DRIVER={SQL Server};'
-        'SERVER=localhost\\SQLEXPRESS;'
-        f'USER={user};'
-        f'PWD={password};'
-        'DATABASE=netflix;'
-        )
-        sql_cursor = conn.cursor()
+        from sqlalchemy import create_engine, text
+        from urllib.parse import quote_plus
+        server = 'localhost\\SQLEXPRESS'   
+        database = 'netflix'
+        driver = 'ODBC Driver 17 for SQL Server'
+        driver_encoded = quote_plus(driver)
+
+        connection_string = f"mssql+pyodbc://{user}:{password}@{server}/{database}?driver={driver_encoded}&Encrypt=no&TrustServerCertificate=yes"
+
+        # Cria engine com fast_executemany
+        engine = create_engine(connection_string, fast_executemany=True)
+
+        with engine.connect() as conn:
+            con_test = conn.execute(text('SELECT TOP 1000 * FROM netflix_data'))
+            print(con_test.fetchone())
         print('Conected!')
         status = True
     except Exception as e:
         print(f"Couldn't conect: {e}")
-
 
 
 def main():
