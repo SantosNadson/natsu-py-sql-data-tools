@@ -1,8 +1,6 @@
 #import nedded packages
 import pandas as pd
 import os
-from datetime import datetime
-import pyodbc
 from conn_configs import user,password
 
 '''STEP 1: LOAD THE CSV'''
@@ -48,7 +46,6 @@ def process_csv():
     for column in null_columns:
         csv_filtered[column] = csv_filtered[column].fillna('Not informed')
 
-
     try:
         print('Trying to format date column')
         csv_filtered['Release_Date'] = pd.to_datetime(csv_filtered['Release_Date'],format='mixed', dayfirst=False,errors='coerce')
@@ -69,32 +66,62 @@ def csv_to_sql():
     status = False 
 
     #creating the SQL Server conection  
+    from sqlalchemy import create_engine, text
+    from urllib.parse import quote_plus
+    server = 'localhost\\SQLEXPRESS'   
+    database = 'netflix'
+    driver = 'ODBC Driver 17 for SQL Server'
+
+    engine = create_engine(
+    f"mssql+pyodbc://{user}:{password}@{server}/{database}?driver={driver}&Encrypt=no&TrustServerCertificate=yes"
+    )
+
+    #testing the connection
     try:
-        from sqlalchemy import create_engine, text
-        from urllib.parse import quote_plus
-        server = 'localhost\\SQLEXPRESS'   
-        database = 'netflix'
-        driver = 'ODBC Driver 17 for SQL Server'
-        driver_encoded = quote_plus(driver)
-
-        connection_string = f"mssql+pyodbc://{user}:{password}@{server}/{database}?driver={driver_encoded}&Encrypt=no&TrustServerCertificate=yes"
-
-        # Cria engine com fast_executemany
-        engine = create_engine(connection_string, fast_executemany=True)
-
-        with engine.connect() as conn:
-            con_test = conn.execute(text('SELECT TOP 1000 * FROM netflix_data'))
-            print(con_test.fetchone())
+        print(f'Conecting to {server}')
+        conn = engine.connect()
         print('Conected!')
         status = True
     except Exception as e:
         print(f"Couldn't conect: {e}")
+        status = False
+    
 
+    #inserting data
+    if status:
+        try:
+            print('Inserting data')
+            df.to_sql(
+                'netflix_data',
+                engine,
+                if_exists='append',
+                index=False,
+                chunksize=1000
+            )
+            print(f'Data loaded to {server}')
+        except Exception as e:
+            print('Error on insert:\n{e}')
+
+    #saving df as json and testing it
+    df.to_json(
+        path_or_buf=r'ETL\netflix_data.json',
+        orient='table',
+        date_format='iso',
+        date_unit='ms',
+        force_ascii=False,
+        double_precision=6,
+        lines=False,
+        index=False
+    )
+
+    jsn_df = pd.read_json(r'ETL\netflix_data.json', orient='table')
+    print(jsn_df.head(5))
+    
 
 def main():
     csv_to_sql()
 
-if __name__ == main():
+if __name__ == "__main__":
     main()
 
 
